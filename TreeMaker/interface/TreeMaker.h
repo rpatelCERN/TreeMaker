@@ -1,3 +1,6 @@
+#ifndef TREEMAKER_H
+#define TREEMAKER_H
+
 // CMSSW headers
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
@@ -84,6 +87,7 @@ class TreeObjectBase {
 		//functions
 		virtual string GetNameInTree() const { return nameInTree; }
 		virtual void Initialize(map<string,unsigned>& nameCache, edm::ConsumesCollector && iC, stringstream& message) {}
+        virtual void Initialize(map<string,unsigned>& nameCache, stringstream& message) {}
 		virtual void SetTree(TTree* tree_) { tree = tree_; }
 		virtual void AddBranch() {}
 		virtual void SetDefault() {}
@@ -167,6 +171,36 @@ class TreeObject : public TreeObjectBase {
 			//finalize name to avoid duplicates
 			FinalizeName(nameCache,message);
 		}
+   		void Initialize(map<string,unsigned>& nameCache, stringstream& message) override {
+			//case 1: x      -> tag = x,   name = x
+			//case 2: x:y    -> tag = x:y, name = y
+			//case 3: x(y)   -> tag = x,   name = y
+			//case 4: x:y(z) -> tag = x:y, name = z
+			
+			size_t pos1 = tempFull.find('(');
+			size_t pos2 = tempFull.find(')');
+			size_t pos3 = tempFull.find(':');
+			
+			//case 3/4
+			if(pos1!=string::npos && pos2!=string::npos){
+				tagName = tempFull.substr(0,pos1);
+				nameInTree = tempFull.substr(pos1+1,pos2-(pos1+1));
+			}
+			//case 2
+			else if(pos3!=string::npos){
+				nameInTree = tempFull.substr(pos3+1);
+			}
+			//case 1, nothing to do
+			//(constructor assumes this case by default)
+			else { }
+			
+			message << "full name: " << tempFull << " -> tag: " << tagName << " nameInTree: " << nameInTree << "\n";
+			//make tag
+			tag = edm::InputTag(tagName);
+			
+			//finalize name to avoid duplicates
+			FinalizeName(nameCache,message);
+        }
 		virtual void SetConsumes(edm::ConsumesCollector && iC){
 			tok = iC.consumes<T>(tag);
 		}
@@ -184,6 +218,7 @@ class TreeObject : public TreeObjectBase {
 		//these will be implemented below for specializations
 		void AddBranch() override {}
 		void SetDefault() override {}
+        void SetValue(T value_) {value = value_;}
 		
 	protected:
 		//member variables
@@ -193,66 +228,66 @@ class TreeObject : public TreeObjectBase {
 
 //specialize!
 
-template<>
+template<> inline
 void TreeObject<bool>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),&value,(nameInTree+"/O").c_str()); }
-template<>
+template<> inline
 void TreeObject<int>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),&value,(nameInTree+"/I").c_str()); }
-template<>
+template<> inline
 void TreeObject<double>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),&value,(nameInTree+"/D").c_str()); }
-template<>
+template<> inline
 void TreeObject<string>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),nameInTree.c_str(),&value); }
-template<>
+template<> inline
 void TreeObject<TLorentzVector>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),nameInTree.c_str(),&value); }
-template<>
+template<> inline
 void TreeObject<vector<bool> >::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<bool>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<int> >::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<int>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<double> >::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<double>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<string> >::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<string>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<TLorentzVector> >::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<TLorentzVector>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<vector<bool>>>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<vector<bool>>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<vector<int>>>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<vector<int>>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<vector<double>>>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<vector<double>>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<vector<string>>>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<vector<string>>",&value,32000,0); }
-template<>
+template<> inline
 void TreeObject<vector<vector<TLorentzVector>>>::AddBranch() { if(tree) tree->Branch(nameInTree.c_str(),"vector<vector<TLorentzVector>>",&value,32000,0); }
 
-template<>
+template<> inline
 void TreeObject<bool>::SetDefault() { value = false; }
-template<>
+template<> inline
 void TreeObject<int>::SetDefault() { value = 9999; }
-template<>
+template<> inline
 void TreeObject<double>::SetDefault() { value = 9999.; }
-template<>
+template<> inline
 void TreeObject<string>::SetDefault() { value = ""; }
-template<>
+template<> inline
 void TreeObject<TLorentzVector>::SetDefault() { value.SetXYZT(0,0,0,0); }
-template<>
+template<> inline
 void TreeObject<vector<bool> >::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<int> >::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<double> >::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<string> >::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<TLorentzVector> >::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<vector<bool>>>::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<vector<int>>>::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<vector<double>>>::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<vector<string>>>::SetDefault() { value.clear(); }
-template<>
+template<> inline
 void TreeObject<vector<vector<TLorentzVector>>>::SetDefault() { value.clear(); }
 
 //derived version of vector<TLorentzVector> for RecoCand
@@ -328,3 +363,5 @@ class TreeRecoCand : public TreeObject<vector<TLorentzVector> > {
 		bool doLorentz{};
 		vector<double> pt, eta, phi, energy;
 };
+
+#endif
