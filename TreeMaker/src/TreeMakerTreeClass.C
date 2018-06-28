@@ -298,7 +298,7 @@ VTLorentzVector TreeMakerTreeClass::RemakeJetsJERup() {
 	VTLorentzVector JetsJERupFriend(Jets->size());
 	for(unsigned j = 0; j < JetsJERup_origIndex->size(); ++j){
     	int i = newIndex[JetsJERup_origIndex->at(j)];
-    	JetsJERupFriend[j] = Jets->at(i)*(1./Jets_jerFactor->at(i))*Jets_jerFactorUp->at(j);
+    	JetsJERupFriend[j] = Jets->at(i)*(1./Jets_jerFactor->at(i))*Jets_jerFactorUp->at(i);
 	}
 	return JetsJERupFriend;
 }
@@ -308,7 +308,7 @@ VTLorentzVector TreeMakerTreeClass::RemakeJetsJERdown() {
 	VTLorentzVector JetsJERdownFriend(Jets->size());
 	for(unsigned j = 0; j < JetsJERdown_origIndex->size(); ++j){
     	int i = newIndex[JetsJERdown_origIndex->at(j)];
-    	JetsJERdownFriend[j] = Jets->at(i)*(1./Jets_jerFactor->at(i))*Jets_jerFactorDown->at(j);
+    	JetsJERdownFriend[j] = Jets->at(i)*(1./Jets_jerFactor->at(i))*Jets_jerFactorDown->at(i);
 	}
 	return JetsJERdownFriend;
 }
@@ -343,16 +343,16 @@ void TreeMakerTreeClass::TestJERCBranches(int scanDepth, bool verbose) {
     std::string scanString = MakeScanString(branchesCombined,"JERCFriend",true,false).first;
     std::cout << "\nScan varexp: " << scanString << std::endl;
     fChain->SetScanField(scanDepth); 
-    fChain->Scan(scanString.c_str(),"","colsize=10");
+    fChain->Scan(scanString.c_str(),"","colsize=10 precision=6");
 
     std::cout << "\nTestJERCBranches::Testing all entries for inconsistencies ... " << std::endl;
     std::pair<std::string,int> cutStringPair = MakeScanString(branchesCombined,"JERCFriend",true,true);
     scanString = cutStringPair.first;
-    std::stringstream cutString; cutString << "abs(" << scanString << ") - (" << cutStringPair.first.replace(0,3,"Length") << "*" << cutStringPair.second << ") < 0.0001";
+    std::stringstream cutString; cutString << "abs(" << scanString << " - (" << cutStringPair.first.replace(0,3,"Length") << "*" << cutStringPair.second << ")) > 0.0001";
     std::cout << "Scan varexp: " << scanString << std::endl;
     std::cout << "Scan cut: " << cutString.str() << std::endl;
     fChain->SetScanField(0);
-	Long64_t inconsistencies = fChain->Scan(scanString.c_str(),cutString.str().c_str(),"colsize=22");
+	Long64_t inconsistencies = fChain->Scan((scanString+":"+cutString.str()).c_str(),cutString.str().c_str(),"colsize=22 precision=6");
 	if(inconsistencies==0) {
 		std::cout << "\nAll values in the friend tree match those in the original tree!" << std::endl;
 	}
